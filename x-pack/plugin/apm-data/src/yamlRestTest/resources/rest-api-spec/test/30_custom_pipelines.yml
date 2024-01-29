@@ -39,21 +39,6 @@ setup:
 
   - do:
       ingest.put_pipeline:
-        id: "metrics-apm@custom"
-        body: >
-          {
-            "processors": [
-              {
-                "set" : {
-                  "field": "custom_pipelines",
-                  "value": "{{{custom_pipelines}}},{{{_ingest.pipeline}}}"
-                }
-              }
-            ]
-          }
-
-  - do:
-      ingest.put_pipeline:
         id: "metrics-apm.app@custom"
         body: >
           {
@@ -116,7 +101,7 @@ setup:
           fields: ["custom_pipelines"]
   - length: { hits.hits: 1 }
   - match:
-      hits.hits.0._source.custom_pipelines: ",global@custom,metrics@custom,metrics-apm@custom,metrics-apm.app@custom"
+      hits.hits.0._source.custom_pipelines: ",global@custom,metrics@custom,metrics-apm.app@custom"
 
 ---
 "Test traces @custom ingest pipelines":

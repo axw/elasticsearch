@@ -40,10 +40,6 @@ processors:
     name: "{{{data_stream.type}}}@custom"
     ignore_missing_pipeline: true
 - pipeline:
-    if: "ctx?.data_stream?.dataset != 'apm'"
-    name: "{{{data_stream.type}}}-apm@custom"
-    ignore_missing_pipeline: true
-- pipeline:
     # (logs|metrics)-apm.app.<service.name>-* should invoke (logs|metrics)-apm.app@custom,
     # i.e. excluding service.name from the dataset.
     if: "ctx.data_stream?.dataset != null && ctx.data_stream?.dataset.startsWith('apm.app.')"
