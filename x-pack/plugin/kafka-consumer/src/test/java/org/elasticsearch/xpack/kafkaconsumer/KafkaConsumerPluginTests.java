@@ -20,10 +20,12 @@ import org.elasticsearch.xpack.core.XPackSettings;
 import org.junit.After;
 import org.junit.Before;
 
+import java.util.Collection;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -36,22 +38,23 @@ public class KafkaConsumerPluginTests extends ESTestCase {
     public void createPlugin() {
         final ClusterSettings clusterSettings = new ClusterSettings(
             Settings.EMPTY,
-            ClusterSettings.BUILT_IN_CLUSTER_SETTINGS.stream()
-                .collect(Collectors.toSet())
+            ClusterSettings.BUILT_IN_CLUSTER_SETTINGS.stream().collect(Collectors.toSet())
         );
         threadPool = new TestThreadPool(this.getClass().getName());
         clusterService = ClusterServiceUtils.createClusterService(threadPool, clusterSettings);
         plugin = new KafkaConsumerPlugin(Settings.builder().build());
     }
 
-    private void createComponents() {
+    private KafkaConsumerManager createComponents() {
         Environment mockEnvironment = mock(Environment.class);
         when(mockEnvironment.settings()).thenReturn(Settings.builder().build());
         Plugin.PluginServices services = mock(Plugin.PluginServices.class);
         when(services.clusterService()).thenReturn(clusterService);
         when(services.threadPool()).thenReturn(threadPool);
         when(services.environment()).thenReturn(mockEnvironment);
-        //plugin.createComponents(services);
+        Collection<?> components = plugin.createComponents(services);
+        assertThat(components, hasSize(1));
+        return (KafkaConsumerManager)components.iterator().next();
     }
 
     @After
@@ -60,5 +63,8 @@ public class KafkaConsumerPluginTests extends ESTestCase {
         super.tearDown();
         plugin.close();
         threadPool.shutdownNow();
+    }
+
+    public void testTodo() {
     }
 }

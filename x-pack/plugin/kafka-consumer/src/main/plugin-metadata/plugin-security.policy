@@ -1,0 +1,13 @@
+grant {
+  // Needed for loading Kafka serdes
+  permission java.lang.RuntimePermission "getClassLoader";
+
+  // Needed for Kafka JMX metrics. Doesn't seem to work?
+  //permission javax.management.MBeanServerPermission "createMBeanServer";
+  permission *;
+};
+
+grant codeBase "${codebase.kafka-clients}" {
+  permission javax.management.MBeanServerPermission * "createMBeanServer";
+  // ...?
+}
