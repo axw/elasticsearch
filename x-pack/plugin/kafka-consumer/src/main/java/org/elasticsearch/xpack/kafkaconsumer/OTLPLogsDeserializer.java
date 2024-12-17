@@ -7,10 +7,9 @@
 
 package org.elasticsearch.xpack.kafkaconsumer;
 
-import com.google.protobuf.InvalidProtocolBufferException;
-
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
-import io.opentelemetry.proto.logs.v1.LogsData;
+
+import com.google.protobuf.InvalidProtocolBufferException;
 
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.logging.log4j.LogManager;

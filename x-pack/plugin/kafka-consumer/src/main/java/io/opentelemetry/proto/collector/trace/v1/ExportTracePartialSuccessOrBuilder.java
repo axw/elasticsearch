@@ -3,49 +3,50 @@
 
 package io.opentelemetry.proto.collector.trace.v1;
 
-public interface ExportTracePartialSuccessOrBuilder extends
-    // @@protoc_insertion_point(interface_extends:opentelemetry.proto.collector.trace.v1.ExportTracePartialSuccess)
-    com.google.protobuf.MessageOrBuilder {
+public interface ExportTracePartialSuccessOrBuilder
+    extends
+        // @@protoc_insertion_point(interface_extends:opentelemetry.proto.collector.trace.v1.ExportTracePartialSuccess)
+        com.google.protobuf.MessageOrBuilder {
 
-  /**
-   * <pre>
-   * The number of rejected spans.
-   * A `rejected_&lt;signal&gt;` field holding a `0` value indicates that the
-   * request was fully accepted.
-   * </pre>
-   *
-   * <code>int64 rejected_spans = 1;</code>
-   * @return The rejectedSpans.
-   */
-  long getRejectedSpans();
+    /**
+     * <pre>
+     * The number of rejected spans.
+     * A `rejected_&lt;signal&gt;` field holding a `0` value indicates that the
+     * request was fully accepted.
+     * </pre>
+     *
+     * <code>int64 rejected_spans = 1;</code>
+     * @return The rejectedSpans.
+     */
+    long getRejectedSpans();
 
-  /**
-   * <pre>
-   * A developer-facing human-readable message in English. It should be used
-   * either to explain why the server rejected parts of the data during a partial
-   * success or to convey warnings/suggestions during a full success. The message
-   * should offer guidance on how users can address such issues.
-   * error_message is an optional field. An error_message with an empty value
-   * is equivalent to it not being set.
-   * </pre>
-   *
-   * <code>string error_message = 2;</code>
-   * @return The errorMessage.
-   */
-  java.lang.String getErrorMessage();
-  /**
-   * <pre>
-   * A developer-facing human-readable message in English. It should be used
-   * either to explain why the server rejected parts of the data during a partial
-   * success or to convey warnings/suggestions during a full success. The message
-   * should offer guidance on how users can address such issues.
-   * error_message is an optional field. An error_message with an empty value
-   * is equivalent to it not being set.
-   * </pre>
-   *
-   * <code>string error_message = 2;</code>
-   * @return The bytes for errorMessage.
-   */
-  com.google.protobuf.ByteString
-      getErrorMessageBytes();
+    /**
+     * <pre>
+     * A developer-facing human-readable message in English. It should be used
+     * either to explain why the server rejected parts of the data during a partial
+     * success or to convey warnings/suggestions during a full success. The message
+     * should offer guidance on how users can address such issues.
+     * error_message is an optional field. An error_message with an empty value
+     * is equivalent to it not being set.
+     * </pre>
+     *
+     * <code>string error_message = 2;</code>
+     * @return The errorMessage.
+     */
+    java.lang.String getErrorMessage();
+
+    /**
+     * <pre>
+     * A developer-facing human-readable message in English. It should be used
+     * either to explain why the server rejected parts of the data during a partial
+     * success or to convey warnings/suggestions during a full success. The message
+     * should offer guidance on how users can address such issues.
+     * error_message is an optional field. An error_message with an empty value
+     * is equivalent to it not being set.
+     * </pre>
+     *
+     * <code>string error_message = 2;</code>
+     * @return The bytes for errorMessage.
+     */
+    com.google.protobuf.ByteString getErrorMessageBytes();
 }

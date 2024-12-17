@@ -16,14 +16,11 @@ import org.elasticsearch.test.ClusterServiceUtils;
 import org.elasticsearch.test.ESTestCase;
 import org.elasticsearch.threadpool.TestThreadPool;
 import org.elasticsearch.threadpool.ThreadPool;
-import org.elasticsearch.xpack.core.XPackSettings;
 import org.junit.After;
 import org.junit.Before;
 
 import java.util.Collection;
-import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.mock;
@@ -54,7 +51,7 @@ public class KafkaConsumerPluginTests extends ESTestCase {
         when(services.environment()).thenReturn(mockEnvironment);
         Collection<?> components = plugin.createComponents(services);
         assertThat(components, hasSize(1));
-        return (KafkaConsumerManager)components.iterator().next();
+        return (KafkaConsumerManager) components.iterator().next();
     }
 
     @After
@@ -65,6 +62,5 @@ public class KafkaConsumerPluginTests extends ESTestCase {
         threadPool.shutdownNow();
     }
 
-    public void testTodo() {
-    }
+    public void testTodo() {}
 }

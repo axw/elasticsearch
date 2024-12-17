@@ -3,48 +3,49 @@
 
 package io.opentelemetry.proto.profiles.v1development;
 
-public interface FunctionOrBuilder extends
-    // @@protoc_insertion_point(interface_extends:opentelemetry.proto.profiles.v1development.Function)
-    com.google.protobuf.MessageOrBuilder {
+public interface FunctionOrBuilder
+    extends
+        // @@protoc_insertion_point(interface_extends:opentelemetry.proto.profiles.v1development.Function)
+        com.google.protobuf.MessageOrBuilder {
 
-  /**
-   * <pre>
-   * Name of the function, in human-readable form if available.
-   * </pre>
-   *
-   * <code>int32 name_strindex = 1;</code>
-   * @return The nameStrindex.
-   */
-  int getNameStrindex();
+    /**
+     * <pre>
+     * Name of the function, in human-readable form if available.
+     * </pre>
+     *
+     * <code>int32 name_strindex = 1;</code>
+     * @return The nameStrindex.
+     */
+    int getNameStrindex();
 
-  /**
-   * <pre>
-   * Name of the function, as identified by the system.
-   * For instance, it can be a C++ mangled name.
-   * </pre>
-   *
-   * <code>int32 system_name_strindex = 2;</code>
-   * @return The systemNameStrindex.
-   */
-  int getSystemNameStrindex();
+    /**
+     * <pre>
+     * Name of the function, as identified by the system.
+     * For instance, it can be a C++ mangled name.
+     * </pre>
+     *
+     * <code>int32 system_name_strindex = 2;</code>
+     * @return The systemNameStrindex.
+     */
+    int getSystemNameStrindex();
 
-  /**
-   * <pre>
-   * Source file containing the function.
-   * </pre>
-   *
-   * <code>int32 filename_strindex = 3;</code>
-   * @return The filenameStrindex.
-   */
-  int getFilenameStrindex();
+    /**
+     * <pre>
+     * Source file containing the function.
+     * </pre>
+     *
+     * <code>int32 filename_strindex = 3;</code>
+     * @return The filenameStrindex.
+     */
+    int getFilenameStrindex();
 
-  /**
-   * <pre>
-   * Line number in source file.
-   * </pre>
-   *
-   * <code>int64 start_line = 4;</code>
-   * @return The startLine.
-   */
-  long getStartLine();
+    /**
+     * <pre>
+     * Line number in source file.
+     * </pre>
+     *
+     * <code>int64 start_line = 4;</code>
+     * @return The startLine.
+     */
+    long getStartLine();
 }

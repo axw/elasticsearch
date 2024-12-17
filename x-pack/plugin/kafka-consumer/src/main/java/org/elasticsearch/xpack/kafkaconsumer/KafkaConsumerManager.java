@@ -8,13 +8,11 @@
 package org.elasticsearch.xpack.kafkaconsumer;
 
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
-
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.InstrumentationScope;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.logs.v1.LogRecord;
 import io.opentelemetry.proto.logs.v1.ResourceLogs;
-
 import io.opentelemetry.proto.logs.v1.ScopeLogs;
 import io.opentelemetry.proto.resource.v1.Resource;
 
@@ -24,47 +22,30 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
-import org.apache.kafka.common.utils.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.bulk.IndexDocFailureStoreStatus;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.client.internal.Client;
-import org.elasticsearch.cluster.ClusterChangedEvent;
-import org.elasticsearch.cluster.ClusterState;
-import org.elasticsearch.cluster.ClusterStateListener;
-import org.elasticsearch.cluster.metadata.ComposableIndexTemplate;
-import org.elasticsearch.cluster.metadata.DataStream;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
-import org.elasticsearch.common.component.Lifecycle;
-import org.elasticsearch.common.component.LifecycleComponent;
-import org.elasticsearch.common.component.LifecycleListener;
-import org.elasticsearch.core.Nullable;
-import org.elasticsearch.gateway.GatewayService;
 import org.elasticsearch.rest.RestStatus;
-import org.elasticsearch.threadpool.ExecutorBuilder;
-import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.xcontent.XContentBuilder;
-
-import static org.elasticsearch.xcontent.XContentFactory.jsonBuilder;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.regex.Pattern;
+
+import static org.elasticsearch.xcontent.XContentFactory.jsonBuilder;
 
 public class KafkaConsumerManager extends AbstractLifecycleComponent {
     private static final Logger logger = LogManager.getLogger(KafkaConsumerManager.class);
@@ -74,12 +55,7 @@ public class KafkaConsumerManager extends AbstractLifecycleComponent {
     private final ExecutorService executorService;
     private final Client client;
 
-    public KafkaConsumerManager(
-        Properties clientConfig,
-        ClusterService clusterService,
-        ExecutorService executorService,
-        Client client
-    ) {
+    public KafkaConsumerManager(Properties clientConfig, ClusterService clusterService, ExecutorService executorService, Client client) {
         this.clientConfig = clientConfig;
         this.clusterService = clusterService;
         this.executorService = executorService;
@@ -107,9 +83,13 @@ public class KafkaConsumerManager extends AbstractLifecycleComponent {
         addConsumer(
             consumerConfig,
             // TODO(axw) how should we configure topic patterns and expected schema?
+            //
             // OTel Collector exports to otlp_logs|otlp_spans|otlp_metrics by default.
             // Ideally we would also support multiple schemas in one topic, with different
             // schema registry strategies.
+            //
+            // Could we have another plugin (e.g. otel-data) register a schema (XContentRegistry?),
+            // and reference it by a Content-Type record header?
             Pattern.compile("otlp_logs")
         );
     }
@@ -121,7 +101,7 @@ public class KafkaConsumerManager extends AbstractLifecycleComponent {
     @Override
     protected void doStop() {
         for (Runnable runnable : executorService.shutdownNow()) {
-            KafkaConsumerRunnable k = (KafkaConsumerRunnable)runnable;
+            KafkaConsumerRunnable k = (KafkaConsumerRunnable) runnable;
             try {
                 k.shutdown();
             } catch (InterruptedException e) {
@@ -180,6 +160,9 @@ public class KafkaConsumerManager extends AbstractLifecycleComponent {
                         continue;
                     }
 
+                    // TODO(axw) we should consider creating a bulk request for
+                    // all of the consumed records, rather than one per record.
+
                     Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
                     for (ConsumerRecord<String, ExportLogsServiceRequest> record : records) {
                         logger.debug("process logs record", record);
@@ -187,7 +170,7 @@ public class KafkaConsumerManager extends AbstractLifecycleComponent {
                             final TopicPartition tp = new TopicPartition(record.topic(), record.partition());
                             final OffsetAndMetadata prev = offsets.get(tp);
                             final OffsetAndMetadata curr = new OffsetAndMetadata(record.offset(), record.leaderEpoch(), null);
-                            if (prev == null || prev.offset() == record.offset()-1) {
+                            if (prev == null || prev.offset() == record.offset() - 1) {
                                 offsets.put(tp, curr);
                             } else {
                                 logger.warn(String.format("gap in offsets for %s: %s, %d", tp, prev, curr));
@@ -219,7 +202,8 @@ public class KafkaConsumerManager extends AbstractLifecycleComponent {
             // The record is a batch, so each log document we index additionally has its position
             // within the record encoded in the ID.
             final String idPrefix = String.format("%s#%d#%d#", record.topic(), record.partition(), record.offset());
-            BulkRequestBuilder bulk = client.prepareBulk("logs-generic.otel-default");
+            final String dataStream = "logs-generic.otel-default";
+            final BulkRequestBuilder bulk = client.prepareBulk(dataStream);
 
             int documentOffset = 0;
             for (ResourceLogs resourceLogs : record.value().getResourceLogsList()) {
@@ -248,9 +232,13 @@ public class KafkaConsumerManager extends AbstractLifecycleComponent {
                 }
             }
             try {
-                logger.info(String.format("executing bulk indexing request for %d item(s)", documentOffset));
+                // TODO(axw) should the bulk request be executed as the user
+                // who configured the consumer, like Transforms?
                 BulkResponse response = bulk.execute().get();
-                logger.info(String.format("bulk indexing request for %d item(s) took %s", documentOffset, response.getTook()));
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format("bulk indexing request for %d item(s) took %s", documentOffset, response.getTook()));
+                }
+
                 boolean allSuccess = true;
                 if (response.hasFailures()) {
                     for (BulkItemResponse item : response) {

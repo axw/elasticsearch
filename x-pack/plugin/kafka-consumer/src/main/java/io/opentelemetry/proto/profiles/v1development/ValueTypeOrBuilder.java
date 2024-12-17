@@ -3,38 +3,40 @@
 
 package io.opentelemetry.proto.profiles.v1development;
 
-public interface ValueTypeOrBuilder extends
-    // @@protoc_insertion_point(interface_extends:opentelemetry.proto.profiles.v1development.ValueType)
-    com.google.protobuf.MessageOrBuilder {
+public interface ValueTypeOrBuilder
+    extends
+        // @@protoc_insertion_point(interface_extends:opentelemetry.proto.profiles.v1development.ValueType)
+        com.google.protobuf.MessageOrBuilder {
 
-  /**
-   * <pre>
-   * Index into string table.
-   * </pre>
-   *
-   * <code>int32 type_strindex = 1;</code>
-   * @return The typeStrindex.
-   */
-  int getTypeStrindex();
+    /**
+     * <pre>
+     * Index into string table.
+     * </pre>
+     *
+     * <code>int32 type_strindex = 1;</code>
+     * @return The typeStrindex.
+     */
+    int getTypeStrindex();
 
-  /**
-   * <pre>
-   * Index into string table.
-   * </pre>
-   *
-   * <code>int32 unit_strindex = 2;</code>
-   * @return The unitStrindex.
-   */
-  int getUnitStrindex();
+    /**
+     * <pre>
+     * Index into string table.
+     * </pre>
+     *
+     * <code>int32 unit_strindex = 2;</code>
+     * @return The unitStrindex.
+     */
+    int getUnitStrindex();
 
-  /**
-   * <code>.opentelemetry.proto.profiles.v1development.AggregationTemporality aggregation_temporality = 3;</code>
-   * @return The enum numeric value on the wire for aggregationTemporality.
-   */
-  int getAggregationTemporalityValue();
-  /**
-   * <code>.opentelemetry.proto.profiles.v1development.AggregationTemporality aggregation_temporality = 3;</code>
-   * @return The aggregationTemporality.
-   */
-  io.opentelemetry.proto.profiles.v1development.AggregationTemporality getAggregationTemporality();
+    /**
+     * <code>.opentelemetry.proto.profiles.v1development.AggregationTemporality aggregation_temporality = 3;</code>
+     * @return The enum numeric value on the wire for aggregationTemporality.
+     */
+    int getAggregationTemporalityValue();
+
+    /**
+     * <code>.opentelemetry.proto.profiles.v1development.AggregationTemporality aggregation_temporality = 3;</code>
+     * @return The aggregationTemporality.
+     */
+    io.opentelemetry.proto.profiles.v1development.AggregationTemporality getAggregationTemporality();
 }

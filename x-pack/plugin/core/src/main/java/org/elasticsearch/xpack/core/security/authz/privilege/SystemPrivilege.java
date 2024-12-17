@@ -26,6 +26,7 @@ public final class SystemPrivilege extends Privilege {
         "internal:*",
         "indices:monitor/*", // added for monitoring
         "cluster:monitor/*",  // added for monitoring
+        "indices:admin/auto_create", // needed for KafkaConsumer
         "cluster:admin/bootstrap/*", // for the bootstrap service
         "cluster:admin/reroute", // added for DiskThresholdDecider.DiskListener
         "indices:admin/mapping/put", // needed for recovery and shrink api
