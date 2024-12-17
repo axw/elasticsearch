@@ -20,4 +20,7 @@ dependencies {
   // workaround for https://github.com/elastic/elasticsearch/issues/93714
   runtimeOnly "org.slf4j:slf4j-nop:${versions.slf4j}"
   implementation("org.slf4j:slf4j-api:${versions.slf4j}")
+
+  implementation "com.google.protobuf:protobuf-java-util:${versions.protobuf}"
+  implementation "com.google.protobuf:protobuf-java:${versions.protobuf}"
 }

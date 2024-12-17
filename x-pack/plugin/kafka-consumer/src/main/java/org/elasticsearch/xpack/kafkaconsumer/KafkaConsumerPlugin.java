@@ -12,6 +12,7 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.core.TimeValue;
+import org.elasticsearch.index.Index;
 import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.threadpool.ExecutorBuilder;
 import org.elasticsearch.threadpool.ScalingExecutorBuilder;
@@ -72,7 +73,8 @@ public class KafkaConsumerPlugin extends Plugin {
         return Collections.singleton(new KafkaConsumerManager(
             clientConfig,
             clusterService,
-            services.threadPool().executor(THREAD_POOL_NAME)
+            services.threadPool().executor(THREAD_POOL_NAME),
+            services.client()
         ));
     }
 }

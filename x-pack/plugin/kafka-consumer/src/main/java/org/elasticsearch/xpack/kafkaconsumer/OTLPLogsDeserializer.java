@@ -7,35 +7,31 @@
 
 package org.elasticsearch.xpack.kafkaconsumer;
 
-import org.apache.kafka.common.header.Headers;
+import com.google.protobuf.InvalidProtocolBufferException;
+
+import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
+import io.opentelemetry.proto.logs.v1.LogsData;
+
 import org.apache.kafka.common.serialization.Deserializer;
-import org.apache.kafka.common.utils.Utils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-
-public class OTLPLogsDeserializer implements Deserializer<String> {
-    private static Charset encoding = StandardCharsets.UTF_8;
-
-    // TODO(axw)
+public class OTLPLogsDeserializer implements Deserializer<ExportLogsServiceRequest> {
+    private static final Logger logger = LogManager.getLogger(OTLPLogsDeserializer.class);
 
     @Override
-    public String deserialize(String topic, byte[] data) {
+    public ExportLogsServiceRequest deserialize(String topic, byte[] data) {
+        logger.info("deserialising ExportLogsServiceRequest from " + topic);
         if (data == null) {
             return null;
         }
-        return new String(data, encoding);
-    }
-
-    @Override
-    public String deserialize(String topic, Headers headers, ByteBuffer data) {
-        if (data == null) {
-            return null;
+        try {
+            ExportLogsServiceRequest req = ExportLogsServiceRequest.parseFrom(data);
+            logger.info("deserialised ExportLogsServiceRequest from " + topic + ": " + req);
+            return req;
+        } catch (InvalidProtocolBufferException e) {
+            logger.error(e);
+            throw new RuntimeException(String.format("failed to parse ExportLogsServiceRequest record from topic '%s'", topic), e);
         }
-        if (data.hasArray()) {
-            return new String(data.array(), data.position() + data.arrayOffset(), data.remaining(), encoding);
-        }
-        return new String(Utils.toArray(data), encoding);
     }
 }
