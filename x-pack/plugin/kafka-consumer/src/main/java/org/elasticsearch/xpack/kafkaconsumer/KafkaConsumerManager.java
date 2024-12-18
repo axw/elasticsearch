@@ -38,9 +38,11 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Vector;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.regex.Pattern;
@@ -160,23 +162,90 @@ public class KafkaConsumerManager extends AbstractLifecycleComponent {
                         continue;
                     }
 
-                    // TODO(axw) we should consider creating a bulk request for
-                    // all of the consumed records, rather than one per record.
-
-                    Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+                    final String dataStream = "logs-generic.otel-default";
+                    final BulkRequestBuilder bulk = client.prepareBulk(dataStream);
+                    final Vector<Integer> actionCounts = new Vector<>();
+                    final Map<TopicPartition, Long> initialOffsets = new HashMap<>();
                     for (ConsumerRecord<String, ExportLogsServiceRequest> record : records) {
-                        logger.debug("process logs record", record);
-                        if (processLogs(record)) {
+                        // Record the offset of the first record for each topic-partition,
+                        // for tracking the offsets to commit.
+                        final TopicPartition tp = new TopicPartition(record.topic(), record.partition());
+                        initialOffsets.putIfAbsent(tp, record.offset());
+
+                        final int actionsBefore = bulk.numberOfActions();
+                        addLogRecords(record, bulk);
+                        final int actions = bulk.numberOfActions() - actionsBefore;
+                        actionCounts.add(actions);
+                    }
+
+                    // Execute the bulk request, then commit offsets for Kafka records where
+                    // each of the resulting log record documents were successfully indexed.
+                    // We treat conflict as success, to support exactly-once delivery.
+                    //
+                    // TODO(axw) we should execute bulk request as the same user that configured
+                    // the consumer (like in Transforms), to ensure users cannot sidestep
+                    // index privileges by using Kafka.
+                    final Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+                    final BulkResponse response = bulk.execute().get();
+                    final Iterator<ConsumerRecord<String, ExportLogsServiceRequest>> recordIter = records.iterator();
+                    final Iterator<Integer> actionsCountsIter = actionCounts.iterator();
+                    boolean allSuccess = true;
+                    ConsumerRecord<String, ExportLogsServiceRequest> record = recordIter.next();
+                    int actionCountsRemaining = actionsCountsIter.next();
+                    for (BulkItemResponse item : response) {
+                        while (actionCountsRemaining == 0) {
                             final TopicPartition tp = new TopicPartition(record.topic(), record.partition());
-                            final OffsetAndMetadata prev = offsets.get(tp);
-                            final OffsetAndMetadata curr = new OffsetAndMetadata(record.offset(), record.leaderEpoch(), null);
-                            if (prev == null || prev.offset() == record.offset() - 1) {
-                                offsets.put(tp, curr);
-                            } else {
-                                logger.warn(String.format("gap in offsets for %s: %s, %d", tp, prev, curr));
+                            if (allSuccess) {
+                                // The offset to commit is the next offset to consume, i.e. record.offset()+1.
+                                // We should only commit the record if this is the first topic-partition record
+                                // in the batch, or if we successfully processed all preceding topic-partition
+                                // records in the batch.
+                                final OffsetAndMetadata commit = offsets.get(tp);
+                                final long expected = commit != null ? commit.offset() : initialOffsets.getOrDefault(tp, -1L);
+                                if (record.offset() == expected) {
+                                    offsets.put(tp, new OffsetAndMetadata(record.offset() + 1, record.leaderEpoch(), null));
+                                }
+                            }
+                            record = recordIter.next();
+                            actionCountsRemaining = actionsCountsIter.next();
+                            allSuccess = true;
+                        }
+                        final BulkItemResponse.Failure failure = item.getFailure();
+                        if (failure == null) {
+                            if (logger.isTraceEnabled()) {
+                                logger.trace(String.format("successfully indexed %s in %s", item.getId(), item.getIndex()));
+                            }
+                            actionCountsRemaining--;
+                            continue;
+                        }
+                        if (failure.getStatus() == RestStatus.CONFLICT) {
+                            if (logger.isTraceEnabled()) {
+                                logger.trace(String.format("ignoring conflict for %s in %s", item.getId(), item.getIndex()));
+                            }
+                            actionCountsRemaining--;
+                            continue;
+                        }
+                        switch (failure.getFailureStoreStatus()) {
+                            case USED -> {
+                                // Document was stored in the failure store, treat as success.
+                            }
+                            case NOT_ENABLED -> {
+                                // Failure store is disabled, assume that the data was wilfully dropped
+                                // by the user and treat as success.
+                                //
+                                // TODO increment a counter here or in failure store code if not already done.
+                                // TODO consider making this configurable.
+                            }
+                            default -> {
+                                // Document could not even be indexed to the failure store.
+                                // Something catastrophic has occurred, don't commit the offset.
+                                allSuccess = false;
+                                logger.error("failed to index item: " + item.getFailureMessage());
                             }
                         }
+                        actionCountsRemaining--;
                     }
+
                     if (!offsets.isEmpty()) {
                         try {
                             consumer.commitSync(offsets); // commit after: at-least-once delivery
@@ -196,14 +265,11 @@ public class KafkaConsumerManager extends AbstractLifecycleComponent {
             }
         }
 
-        // processLogs returns true if the log record was successfully processed, and false otherwise.
-        private boolean processLogs(ConsumerRecord<String, ExportLogsServiceRequest> record) {
+        private void addLogRecords(ConsumerRecord<String, ExportLogsServiceRequest> record, BulkRequestBuilder bulk) {
             // Each document's ID is prefixed by the Kafka topic, partition, and record offset.
             // The record is a batch, so each log document we index additionally has its position
             // within the record encoded in the ID.
             final String idPrefix = String.format("%s#%d#%d#", record.topic(), record.partition(), record.offset());
-            final String dataStream = "logs-generic.otel-default";
-            final BulkRequestBuilder bulk = client.prepareBulk(dataStream);
 
             int documentOffset = 0;
             for (ResourceLogs resourceLogs : record.value().getResourceLogsList()) {
@@ -230,40 +296,6 @@ public class KafkaConsumerManager extends AbstractLifecycleComponent {
                         }
                     }
                 }
-            }
-            try {
-                // TODO(axw) should the bulk request be executed as the user
-                // who configured the consumer, like Transforms?
-                BulkResponse response = bulk.execute().get();
-                if (logger.isDebugEnabled()) {
-                    logger.debug(String.format("bulk indexing request for %d item(s) took %s", documentOffset, response.getTook()));
-                }
-
-                boolean allSuccess = true;
-                if (response.hasFailures()) {
-                    for (BulkItemResponse item : response) {
-                        final BulkItemResponse.Failure failure = item.getFailure();
-                        if (failure == null) {
-                            if (logger.isTraceEnabled()) {
-                                logger.trace(String.format("successfully indexed %s in %s", item.getId(), item.getIndex()));
-                            }
-                            continue;
-                        }
-                        if (failure.getStatus() == RestStatus.CONFLICT) {
-                            if (logger.isTraceEnabled()) {
-                                logger.trace(String.format("ignoring conflict for %s in %s", item.getId(), item.getIndex()));
-                            }
-                            continue;
-                        }
-                        // TODO check failure store status
-                        logger.error("failed to index item: " + item.getFailureMessage());
-                        allSuccess = false;
-                    }
-                }
-                return allSuccess;
-            } catch (Exception e) {
-                logger.error(e);
-                return false;
             }
         }
 

@@ -20,16 +20,13 @@ public class OTLPLogsDeserializer implements Deserializer<ExportLogsServiceReque
 
     @Override
     public ExportLogsServiceRequest deserialize(String topic, byte[] data) {
-        logger.info("deserialising ExportLogsServiceRequest from " + topic);
         if (data == null) {
             return null;
         }
         try {
             ExportLogsServiceRequest req = ExportLogsServiceRequest.parseFrom(data);
-            logger.info("deserialised ExportLogsServiceRequest from " + topic + ": " + req);
             return req;
         } catch (InvalidProtocolBufferException e) {
-            logger.error(e);
             throw new RuntimeException(String.format("failed to parse ExportLogsServiceRequest record from topic '%s'", topic), e);
         }
     }
