@@ -1,0 +1,12 @@
+{
+  "settings": {
+    "index": {
+      "number_of_shards": 2,
+      "kafka": {
+        "topic": ["otlp_logs"],
+        "value.deserializer": "org.elasticsearch.xpack.kafkaconsumer.OTLPLogsDeserializer"
+      }
+    }
+  }
+}
+

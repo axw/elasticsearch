@@ -8,9 +8,7 @@
 package org.elasticsearch.xpack.kafkaconsumer;
 
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
-import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.InstrumentationScope;
-import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.logs.v1.LogRecord;
 import io.opentelemetry.proto.logs.v1.ResourceLogs;
 import io.opentelemetry.proto.logs.v1.ScopeLogs;
@@ -36,10 +34,8 @@ import org.elasticsearch.xcontent.XContentBuilder;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Vector;
@@ -49,6 +45,11 @@ import java.util.regex.Pattern;
 
 import static org.elasticsearch.xcontent.XContentFactory.jsonBuilder;
 
+/**
+ * NOTE(axw) this is not currently used. It was used in a previous iteration where we
+ * ran the consumer as a separate thread that would index into a data stream, similar
+ * to if we were running the consumer outside of Elasticsearch.
+ */
 public class KafkaConsumerManager extends AbstractLifecycleComponent {
     private static final Logger logger = LogManager.getLogger(KafkaConsumerManager.class);
 
