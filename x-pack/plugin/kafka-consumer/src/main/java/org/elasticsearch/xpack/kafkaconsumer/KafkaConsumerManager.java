@@ -148,14 +148,15 @@ public class KafkaConsumerManager extends AbstractLifecycleComponent {
 
         public void run() {
             boolean shuttingDown = false;
-            final KafkaConsumer<String, ExportLogsServiceRequest> consumer = new KafkaConsumer<>(consumerConfig);
             try {
-                consumer.subscribe(topicPattern);
+                final KafkaConsumer<String, ExportLogsServiceRequest> consumer = new KafkaConsumer<>(consumerConfig);
                 synchronized (this) {
                     if (!isShutdown) {
                         this.consumer = consumer;
                     }
                 }
+                consumer.subscribe(topicPattern);
+
                 while (!shuttingDown) {
                     ConsumerRecords<String, ExportLogsServiceRequest> records = consumer.poll(Duration.ofSeconds(10));
                     if (records.isEmpty()) {
@@ -284,9 +285,9 @@ public class KafkaConsumerManager extends AbstractLifecycleComponent {
                             item.setCreate(true);
                             item.setId(idPrefix + (documentOffset++));
                             builder.startObject();
-                            toXContent(builder, resource, resourceSchemaURL);
-                            toXContent(builder, scope, scopeSchemaURL);
-                            toXContent(builder, logRecord);
+                            OTelDocumentEncoder.toXContent(builder, resource, resourceSchemaURL);
+                            OTelDocumentEncoder.toXContent(builder, scope, scopeSchemaURL);
+                            OTelDocumentEncoder.toXContent(builder, logRecord);
                             item.setSource(builder.endObject());
                             bulk.add(item);
                         } catch (Exception e) {
@@ -297,69 +298,6 @@ public class KafkaConsumerManager extends AbstractLifecycleComponent {
                     }
                 }
             }
-        }
-
-        public XContentBuilder toXContent(XContentBuilder builder, LogRecord record) throws IOException {
-            builder.timestampField("@timestamp", Instant.ofEpochSecond(0, record.getTimeUnixNano()));
-            builder.timestampField("observed_timestamp", Instant.ofEpochSecond(0, record.getObservedTimeUnixNano()));
-            builder.field("trace_id", record.getTraceId());
-            builder.field("span_id", record.getSpanId());
-            builder.field("severity_text", record.getSeverityText());
-            builder.field("severity_number", record.getSeverityNumberValue());
-
-            final AnyValue body = record.getBody();
-            switch (body.getValueCase()) {
-                // TODO body.structured/body.flattened, taking event.name into account
-                case STRING_VALUE -> builder.field("body.text", body.getStringValue());
-                default -> builder.field("body.text", body.toString());
-            }
-
-            builder.field("dropped_attributes_count", record.getDroppedAttributesCount());
-            return attributesToXContent(builder, record.getAttributesList());
-        }
-
-        public XContentBuilder toXContent(XContentBuilder builder, Resource resource, String schemaURL) throws IOException {
-            builder.startObject("resource");
-            if (schemaURL != null && !schemaURL.equals("")) {
-                builder.field("schema_url", schemaURL);
-            }
-            builder.field("dropped_attributes_count", resource.getDroppedAttributesCount());
-            attributesToXContent(builder, resource.getAttributesList());
-            return builder.endObject();
-        }
-
-        public XContentBuilder toXContent(XContentBuilder builder, InstrumentationScope scope, String schemaURL) throws IOException {
-            builder.startObject("scope");
-            final String name = scope.getName();
-            final String version = scope.getVersion();
-            if (!name.isEmpty()) {
-                builder.field("name", name);
-            }
-            if (!version.isEmpty()) {
-                builder.field("version", version);
-            }
-            if (schemaURL != null && !schemaURL.isEmpty()) {
-                builder.field("schema_url", schemaURL);
-            }
-            builder.field("dropped_attributes_count", scope.getDroppedAttributesCount());
-            attributesToXContent(builder, scope.getAttributesList());
-            return builder.endObject();
-        }
-
-        public XContentBuilder attributesToXContent(XContentBuilder builder, List<KeyValue> attributes) throws IOException {
-            builder.startObject("attributes");
-            for (KeyValue kv : attributes) {
-                final String k = kv.getKey();
-                final AnyValue v = kv.getValue();
-                switch (v.getValueCase()) {
-                    // TODO other cases
-                    case INT_VALUE -> builder.field(k, v.getIntValue());
-                    case BOOL_VALUE -> builder.field(k, v.getBoolValue());
-                    case DOUBLE_VALUE -> builder.field(k, v.getDoubleValue());
-                    case STRING_VALUE -> builder.field(k, v.getStringValue());
-                }
-            }
-            return builder.endObject();
         }
     }
 }
