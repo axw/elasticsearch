@@ -52,7 +52,14 @@ public class ShardPartitionAssignor implements ConsumerPartitionAssignor {
             topics.addAll(subscription.topics());
         }
 
+        // Each member _must_ have an assignment, even if empty (i.e. because there
+        // are more shards than partitions -- something that we should ideally make
+        // impossible.)
         final Map<String, Assignment> assignments = new HashMap<>();
+        for (var memberId : shardMembers.values()) {
+            assignments.put(memberId, new Assignment(new ArrayList<>()));
+        }
+
         for (String topic : topics) {
             for (PartitionInfo partition : cluster.partitionsForTopic(topic)) {
                 String memberId = shardMembers.get(partition.partition());
@@ -63,10 +70,6 @@ public class ShardPartitionAssignor implements ConsumerPartitionAssignor {
                     continue;
                 }
                 Assignment assignment = assignments.get(memberId);
-                if (assignment == null) {
-                    assignment = new Assignment(new ArrayList<>());
-                    assignments.put(memberId, assignment);
-                }
                 assignment.partitions().add(new TopicPartition(topic, partition.partition()));
             }
         }

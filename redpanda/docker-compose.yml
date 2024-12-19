@@ -1,15 +1,10 @@
-name: redpanda-quickstart
+name: kafka-testing
 networks:
   redpanda_network:
     driver: bridge
 volumes:
   redpanda-0: null
-  redpanda-1: null
-  redpanda-2: null
 services:
-  ##################
-  # Redpanda Brokers #
-  ##################
   redpanda-0:
     command:
       - redpanda
@@ -44,9 +39,7 @@ services:
       - 18082:18082
       - 9092:19092
       - 19644:9644
-  ####################
-  # Redpanda Console #
-  ####################
+
   console:
     container_name: redpanda-console
     image: docker.redpanda.com/redpandadata/console:v2.8.0
@@ -72,3 +65,24 @@ services:
       - 8080:8080
     depends_on:
       - redpanda-0
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.116.1
+    restart: always
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./otel-collector.yml:/etc/otel-collector-config.yml
+    networks:
+      - redpanda_network
+    ports:
+      - 4318:4318
+
+  telemetrygen:
+    image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.116.0
+    restart: always
+    command: ["logs", "--otlp-insecure", "--otlp-http", "--otlp-endpoint=otel-collector:4318", "--logs=100"]
+    networks:
+      - redpanda_network
+    depends_on:
+      - otel-collector
+
