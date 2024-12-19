@@ -107,19 +107,16 @@ public class KafkaEngine extends InternalEngine implements Runnable {
 
     @Override
     public IndexResult index(Index index) {
-        assert false : "this should not be called";
         throw new UnsupportedOperationException("direct operations are not supported on a Kafka engine");
     }
 
     @Override
     public DeleteResult delete(Delete delete) {
-        assert false : "this should not be called";
         throw new UnsupportedOperationException("direct operations are not supported on a Kafka engine");
     }
 
     @Override
     public NoOpResult noOp(NoOp noOp) {
-        assert false : "this should not be called";
         throw new UnsupportedOperationException("direct operations are not supported on a Kafka engine");
     }
 
