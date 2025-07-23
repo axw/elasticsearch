@@ -910,9 +910,17 @@ public abstract class TransportReplicationAction<
                     retryBecauseUnavailable(request.shardId(), "primary shard isn't assigned to a known node.");
                     return;
                 }
+
                 final DiscoveryNode node = state.nodes().get(primary.currentNodeId());
                 if (primary.currentNodeId().equals(state.nodes().getLocalNodeId())) {
                     performLocalAction(state, primary, node, indexMetadata);
+                } else if (request.local()) {
+                    // TODO more specific exception type
+                    finishAsFailed(new Exception(
+                        "local node is not the primary node for shard ["
+                            + request.shardId()
+                            + "] but request was marked as local."
+                    ));
                 } else {
                     performRemoteAction(state, primary, node);
                 }

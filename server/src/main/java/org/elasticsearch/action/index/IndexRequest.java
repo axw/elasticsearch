@@ -118,8 +118,6 @@ public class IndexRequest extends ReplicatedWriteRequest<IndexRequest> implement
 
     private boolean includeSourceOnError = true;
 
-    private boolean local = false;
-
     /**
      * Transient flag denoting that the local request should be routed to a failure store. Not persisted across the wire.
      */
@@ -218,10 +216,6 @@ public class IndexRequest extends ReplicatedWriteRequest<IndexRequest> implement
         if (in.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_INCLUDE_SOURCE_ON_ERROR)) {
             includeSourceOnError = in.readBoolean();
         } // else default value is true
-
-        if (in.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_LOCAL)) {
-            local = in.readBoolean();
-        }
     }
 
     public IndexRequest() {
@@ -368,10 +362,6 @@ public class IndexRequest extends ReplicatedWriteRequest<IndexRequest> implement
     public IndexRequest local(boolean local) {
         this.local = local;
         return this;
-    }
-
-    public boolean local() {
-        return local;
     }
 
     /**
@@ -836,9 +826,6 @@ public class IndexRequest extends ReplicatedWriteRequest<IndexRequest> implement
         if (out.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_INCLUDE_SOURCE_ON_ERROR)) {
             out.writeBoolean(includeSourceOnError);
         }
-        if (out.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_LOCAL)) {
-            out.writeBoolean(local);
-        }
     }
 
     @Override
@@ -913,15 +900,6 @@ public class IndexRequest extends ReplicatedWriteRequest<IndexRequest> implement
 
     public IndexRequest setIncludeSourceOnError(boolean includeSourceOnError) {
         this.includeSourceOnError = includeSourceOnError;
-        return this;
-    }
-
-    public boolean getLocal() {
-        return local;
-    }
-
-    public IndexRequest setLocal(boolean local) {
-        this.local = local;
         return this;
     }
 

@@ -56,7 +56,6 @@ public class DeleteRequest extends ReplicatedWriteRequest<DeleteRequest>
     private VersionType versionType = VersionType.INTERNAL;
     private long ifSeqNo = UNASSIGNED_SEQ_NO;
     private long ifPrimaryTerm = UNASSIGNED_PRIMARY_TERM;
-    private boolean local = false;
 
     public DeleteRequest(StreamInput in) throws IOException {
         this(null, in);
@@ -74,9 +73,6 @@ public class DeleteRequest extends ReplicatedWriteRequest<DeleteRequest>
         versionType = VersionType.fromValue(in.readByte());
         ifSeqNo = in.readZLong();
         ifPrimaryTerm = in.readVLong();
-        if (in.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_LOCAL)) {
-            local = in.readBoolean();
-        }
     }
 
     public DeleteRequest() {
@@ -162,15 +158,9 @@ public class DeleteRequest extends ReplicatedWriteRequest<DeleteRequest>
         return this.routing;
     }
 
-    @Override
     public DeleteRequest local(boolean local) {
         this.local = local;
         return this;
-    }
-
-    @Override
-    public boolean local() {
-        return local;
     }
 
     @Override

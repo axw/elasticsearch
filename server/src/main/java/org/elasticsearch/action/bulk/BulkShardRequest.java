@@ -37,6 +37,7 @@ public final class BulkShardRequest extends ReplicatedWriteRequest<BulkShardRequ
 
     private final BulkItemRequest[] items;
     private final boolean isSimulated;
+    private final boolean local;
 
     private transient Map<String, InferenceFieldMetadata> inferenceFieldMap = null;
 
@@ -48,6 +49,7 @@ public final class BulkShardRequest extends ReplicatedWriteRequest<BulkShardRequ
         } else {
             isSimulated = false;
         }
+        this.local = false;
     }
 
     public BulkShardRequest(ShardId shardId, RefreshPolicy refreshPolicy, BulkItemRequest[] items) {
@@ -55,10 +57,15 @@ public final class BulkShardRequest extends ReplicatedWriteRequest<BulkShardRequ
     }
 
     public BulkShardRequest(ShardId shardId, RefreshPolicy refreshPolicy, BulkItemRequest[] items, boolean isSimulated) {
+        this(shardId, refreshPolicy, items, isSimulated, false);
+    }
+
+    public BulkShardRequest(ShardId shardId, RefreshPolicy refreshPolicy, BulkItemRequest[] items, boolean isSimulated, boolean local) {
         super(shardId);
         this.items = items;
         setRefreshPolicy(refreshPolicy);
         this.isSimulated = isSimulated;
+        this.local = local;
     }
 
     /**

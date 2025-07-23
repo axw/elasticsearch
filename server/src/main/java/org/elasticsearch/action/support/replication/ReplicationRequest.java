@@ -48,6 +48,7 @@ public abstract class ReplicationRequest<Request extends ReplicationRequest<Requ
 
     protected TimeValue timeout;
     protected String index;
+    protected boolean local = false;
 
     /**
      * The number of shard copies that must be active before proceeding with the replication action.
@@ -89,6 +90,10 @@ public abstract class ReplicationRequest<Request extends ReplicationRequest<Requ
         this.index = shardId == null ? null : shardId.getIndexName();
         this.shardId = shardId;
         this.timeout = DEFAULT_TIMEOUT;
+    }
+
+    public boolean local() {
+        return local;
     }
 
     /**

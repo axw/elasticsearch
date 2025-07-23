@@ -86,7 +86,7 @@ public class BulkRequest extends LegacyActionRequest
     private Boolean globalRequireAlias;
     private Boolean globalRequireDatsStream;
     private boolean includeSourceOnError = true;
-    private Boolean local;
+    private boolean local = false;
 
     private long sizeInBytes = 0;
 
@@ -109,9 +109,6 @@ public class BulkRequest extends LegacyActionRequest
         if (in.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_INCLUDE_SOURCE_ON_ERROR)) {
             includeSourceOnError = in.readBoolean();
         } // else default value is true
-        if (in.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_LOCAL)) {
-            local = in.readBoolean();
-        } // else default value is false
     }
 
     public BulkRequest(@Nullable String globalIndex) {
@@ -500,9 +497,6 @@ public class BulkRequest extends LegacyActionRequest
         if (out.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_INCLUDE_SOURCE_ON_ERROR)) {
             out.writeBoolean(includeSourceOnError);
         }
-        if (out.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_LOCAL)) {
-            out.writeBoolean(local);
-        }
     }
 
     @Override
@@ -512,7 +506,6 @@ public class BulkRequest extends LegacyActionRequest
 
     private void applyGlobalMandatoryParameters(DocWriteRequest<?> request) {
         request.index(valueOrDefault(request.index(), globalIndex));
-        request.local(local);
     }
 
     private static String valueOrDefault(String value, String globalDefault) {

@@ -86,12 +86,6 @@ public interface DocWriteRequest<T> extends IndicesRequest, Accountable {
     String routing();
 
     /**
-     * Set the local execution flag for this request
-     * @return the Request
-     */
-    T local(boolean local);
-
-    /**
      * Get the local execution flag for this request
      * @return the local execution flag
      */

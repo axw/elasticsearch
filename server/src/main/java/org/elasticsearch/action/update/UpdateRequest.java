@@ -160,9 +160,6 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest>
         detectNoop = in.readBoolean();
         scriptedUpsert = in.readBoolean();
         requireAlias = in.readBoolean();
-        if (in.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_LOCAL)) {
-            local = in.readBoolean();
-        }
     }
 
     public UpdateRequest(String index, String id) {
@@ -256,7 +253,6 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest>
         return this.routing;
     }
 
-    @Override
     public UpdateRequest local(boolean local) {
         this.local = local;
         return this;

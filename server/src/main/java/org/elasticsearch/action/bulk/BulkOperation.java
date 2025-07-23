@@ -405,7 +405,8 @@ final class BulkOperation extends ActionRunnable<BulkResponse> {
                     shardId,
                     bulkRequest.getRefreshPolicy(),
                     requests.toArray(new BulkItemRequest[0]),
-                    bulkRequest.isSimulated()
+                    bulkRequest.isSimulated(),
+                    bulkRequest.local()
                 );
                 var indexMetadata = project.index(shardId.getIndexName());
                 if (indexMetadata != null && indexMetadata.getInferenceFields().isEmpty() == false) {
