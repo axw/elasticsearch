@@ -92,6 +92,7 @@ public class MonitoringBulkRequest extends LegacyActionRequest {
             null,
             null,
             null,
+            null,
             true,
             xContentType,
             (indexRequest, type) -> {

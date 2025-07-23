@@ -118,6 +118,8 @@ public class IndexRequest extends ReplicatedWriteRequest<IndexRequest> implement
 
     private boolean includeSourceOnError = true;
 
+    private boolean local = false;
+
     /**
      * Transient flag denoting that the local request should be routed to a failure store. Not persisted across the wire.
      */
@@ -216,6 +218,10 @@ public class IndexRequest extends ReplicatedWriteRequest<IndexRequest> implement
         if (in.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_INCLUDE_SOURCE_ON_ERROR)) {
             includeSourceOnError = in.readBoolean();
         } // else default value is true
+
+        if (in.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_LOCAL)) {
+            local = in.readBoolean();
+        }
     }
 
     public IndexRequest() {
@@ -229,6 +235,12 @@ public class IndexRequest extends ReplicatedWriteRequest<IndexRequest> implement
     public IndexRequest(String index) {
         super(NO_SHARD_ID);
         this.index = index;
+    }
+
+    public IndexRequest(@Nullable ShardId shardId, String index, String id) {
+        super(shardId);
+        this.index = index;
+        this.id = id;
     }
 
     private static final StringLiteralDeduplicator pipelineNameDeduplicator = new StringLiteralDeduplicator();
@@ -351,6 +363,15 @@ public class IndexRequest extends ReplicatedWriteRequest<IndexRequest> implement
     @Override
     public String routing() {
         return this.routing;
+    }
+
+    public IndexRequest local(boolean local) {
+        this.local = local;
+        return this;
+    }
+
+    public boolean local() {
+        return local;
     }
 
     /**
@@ -815,6 +836,9 @@ public class IndexRequest extends ReplicatedWriteRequest<IndexRequest> implement
         if (out.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_INCLUDE_SOURCE_ON_ERROR)) {
             out.writeBoolean(includeSourceOnError);
         }
+        if (out.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_LOCAL)) {
+            out.writeBoolean(local);
+        }
     }
 
     @Override
@@ -892,6 +916,15 @@ public class IndexRequest extends ReplicatedWriteRequest<IndexRequest> implement
         return this;
     }
 
+    public boolean getLocal() {
+        return local;
+    }
+
+    public IndexRequest setLocal(boolean local) {
+        this.local = local;
+        return this;
+    }
+
     @Override
     public Index getConcreteWriteIndex(IndexAbstraction ia, ProjectMetadata project) {
         if (writeToFailureStore) {
@@ -917,6 +950,9 @@ public class IndexRequest extends ReplicatedWriteRequest<IndexRequest> implement
 
     @Override
     public int route(IndexRouting indexRouting) {
+        if (this.shardId != null) {
+            return this.shardId.id();
+        }
         return indexRouting.indexShard(id, routing, contentType, source);
     }
 

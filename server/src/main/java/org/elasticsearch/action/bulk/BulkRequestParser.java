@@ -13,6 +13,7 @@ import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.update.UpdateRequest;
+import org.elasticsearch.cluster.metadata.IndexMetadata;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.logging.DeprecationLogger;
 import org.elasticsearch.common.lucene.uid.Versions;
@@ -20,8 +21,10 @@ import org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import org.elasticsearch.core.Nullable;
 import org.elasticsearch.core.RestApiVersion;
 import org.elasticsearch.core.UpdateForV10;
+import org.elasticsearch.index.Index;
 import org.elasticsearch.index.VersionType;
 import org.elasticsearch.index.seqno.SequenceNumbers;
+import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import org.elasticsearch.xcontent.ParseField;
 import org.elasticsearch.xcontent.XContent;
@@ -56,6 +59,7 @@ public final class BulkRequestParser {
     private static final ParseField TYPE = new ParseField("_type");
     private static final ParseField ID = new ParseField("_id");
     private static final ParseField ROUTING = new ParseField("routing");
+    private static final ParseField SHARD = new ParseField("shard");
     private static final ParseField OP_TYPE = new ParseField("op_type");
     private static final ParseField VERSION = new ParseField("version");
     private static final ParseField VERSION_TYPE = new ParseField("version_type");
@@ -68,6 +72,7 @@ public final class BulkRequestParser {
     private static final ParseField REQUIRE_DATA_STREAM = new ParseField(DocWriteRequest.REQUIRE_DATA_STREAM);
     private static final ParseField LIST_EXECUTED_PIPELINES = new ParseField(DocWriteRequest.LIST_EXECUTED_PIPELINES);
     private static final ParseField DYNAMIC_TEMPLATES = new ParseField("dynamic_templates");
+    private static final ParseField LOCAL = new ParseField("local");
 
     // TODO: Remove this parameter once the BulkMonitoring endpoint has been removed
     // for CompatibleApi V7 this means to deprecate on type, for V8+ it means to throw an error
@@ -136,6 +141,7 @@ public final class BulkRequestParser {
         @Nullable Boolean defaultRequireAlias,
         @Nullable Boolean defaultRequireDataStream,
         @Nullable Boolean defaultListExecutedPipelines,
+        @Nullable Boolean defaultLocal,
         boolean allowExplicitIndex,
         XContentType xContentType,
         BiConsumer<IndexRequest, String> indexRequestConsumer,
@@ -150,6 +156,7 @@ public final class BulkRequestParser {
             defaultRequireAlias,
             defaultRequireDataStream,
             defaultListExecutedPipelines,
+            defaultLocal,
             allowExplicitIndex,
             xContentType,
             indexRequestConsumer,
@@ -168,6 +175,7 @@ public final class BulkRequestParser {
         @Nullable Boolean defaultRequireAlias,
         @Nullable Boolean defaultRequireDataStream,
         @Nullable Boolean defaultListExecutedPipelines,
+        @Nullable Boolean defaultLocal,
         boolean allowExplicitIndex,
         XContentType xContentType,
         BiConsumer<IndexRequest, String> indexRequestConsumer,
@@ -182,6 +190,7 @@ public final class BulkRequestParser {
             defaultRequireAlias,
             defaultRequireDataStream,
             defaultListExecutedPipelines,
+            defaultLocal,
             allowExplicitIndex,
             xContentType,
             indexRequestConsumer,
@@ -204,6 +213,7 @@ public final class BulkRequestParser {
         private final Boolean defaultRequireAlias;
         private final Boolean defaultRequireDataStream;
         private final Boolean defaultListExecutedPipelines;
+        private final Boolean defaultLocal;
         private final boolean allowExplicitIndex;
 
         private final XContentType xContentType;
@@ -230,6 +240,7 @@ public final class BulkRequestParser {
             @Nullable Boolean defaultRequireAlias,
             @Nullable Boolean defaultRequireDataStream,
             @Nullable Boolean defaultListExecutedPipelines,
+            @Nullable Boolean defaultLocal,
             boolean allowExplicitIndex,
             XContentType xContentType,
             BiConsumer<IndexRequest, String> indexRequestConsumer,
@@ -243,6 +254,7 @@ public final class BulkRequestParser {
             this.defaultRequireAlias = defaultRequireAlias;
             this.defaultRequireDataStream = defaultRequireDataStream;
             this.defaultListExecutedPipelines = defaultListExecutedPipelines;
+            this.defaultLocal = defaultLocal;
             this.allowExplicitIndex = allowExplicitIndex;
             this.xContentType = xContentType;
             this.marker = xContentType.xContent().bulkSeparator();
@@ -350,6 +362,7 @@ public final class BulkRequestParser {
                 String index = defaultIndex;
                 String id = null;
                 String routing = defaultRouting;
+                Integer shard = null;
                 String opType = null;
                 long version = Versions.MATCH_ANY;
                 VersionType versionType = VersionType.INTERNAL;
@@ -358,6 +371,7 @@ public final class BulkRequestParser {
                 int retryOnConflict = 0;
                 boolean requireAlias = defaultRequireAlias != null && defaultRequireAlias;
                 boolean requireDataStream = defaultRequireDataStream != null && defaultRequireDataStream;
+                boolean local = defaultLocal != null && defaultLocal;
                 Map<String, String> dynamicTemplates = Map.of();
 
                 // at this stage, next token can either be END_OBJECT (and use default index and type, with auto generated id)
@@ -386,6 +400,8 @@ public final class BulkRequestParser {
                                 id = parser.text();
                             } else if (ROUTING.match(currentFieldName, parser.getDeprecationHandler())) {
                                 routing = stringDeduplicator.computeIfAbsent(parser.text(), Function.identity());
+                            } else if (SHARD.match(currentFieldName, parser.getDeprecationHandler())) {
+                                shard = parser.intValue();
                             } else if (OP_TYPE.match(currentFieldName, parser.getDeprecationHandler())) {
                                 opType = parser.text();
                             } else if (VERSION.match(currentFieldName, parser.getDeprecationHandler())) {
@@ -408,6 +424,8 @@ public final class BulkRequestParser {
                                 requireDataStream = parser.booleanValue();
                             } else if (LIST_EXECUTED_PIPELINES.match(currentFieldName, parser.getDeprecationHandler())) {
                                 currentListExecutedPipelines = parser.booleanValue();
+                            } else if (LOCAL.match(currentFieldName, parser.getDeprecationHandler())) {
+                                local = parser.booleanValue();
                             } else {
                                 throw new IllegalArgumentException(
                                     "Action/metadata line [" + line + "] contains an unknown parameter [" + currentFieldName + "]"
@@ -456,23 +474,29 @@ public final class BulkRequestParser {
                 }
                 checkBulkActionIsProperlyClosed(parser, line);
 
+                ShardId shardId = null;
+                if (shard != null) {
+                    shardId = new ShardId(new Index(index, IndexMetadata.INDEX_UUID_NA_VALUE), shard);
+                }
+
                 if ("delete".equals(action)) {
                     if (dynamicTemplates.isEmpty() == false) {
                         throw new IllegalArgumentException(
                             "Delete request in line [" + line + "] does not accept " + DYNAMIC_TEMPLATES.getPreferredName()
                         );
                     }
-                    currentRequest = new DeleteRequest(index).id(id)
+                    currentRequest = new DeleteRequest(shardId, index, id)
                         .routing(routing)
                         .version(version)
                         .versionType(versionType)
                         .setIfSeqNo(ifSeqNo)
-                        .setIfPrimaryTerm(ifPrimaryTerm);
+                        .setIfPrimaryTerm(ifPrimaryTerm)
+                        .local(local);
                 } else {
                     // we use internalAdd so we don't fork here, this allows us not to copy over the big byte array to small chunks
                     // of index request.
                     if ("index".equals(action) || "create".equals(action)) {
-                        var indexRequest = new IndexRequest(index).id(id)
+                        var indexRequest = new IndexRequest(shardId, index, id)
                             .routing(routing)
                             .version(version)
                             .versionType(versionType)
@@ -483,7 +507,8 @@ public final class BulkRequestParser {
                             .setRequireAlias(requireAlias)
                             .setRequireDataStream(requireDataStream)
                             .setListExecutedPipelines(currentListExecutedPipelines)
-                            .setIncludeSourceOnError(config.includeSourceOnError());
+                            .setIncludeSourceOnError(config.includeSourceOnError())
+                            .local(local);
                         if ("create".equals(action)) {
                             indexRequest = indexRequest.create(true);
                         } else if (opType != null) {
@@ -508,14 +533,14 @@ public final class BulkRequestParser {
                                 "Update request in line [" + line + "] does not accept " + DYNAMIC_TEMPLATES.getPreferredName()
                             );
                         }
-                        UpdateRequest updateRequest = new UpdateRequest().index(index)
-                            .id(id)
+                        UpdateRequest updateRequest = new UpdateRequest(shardId, index, id)
                             .routing(routing)
                             .retryOnConflict(retryOnConflict)
                             .setIfSeqNo(ifSeqNo)
                             .setIfPrimaryTerm(ifPrimaryTerm)
                             .setRequireAlias(requireAlias)
-                            .routing(routing);
+                            .routing(routing)
+                            .local(local);
                         currentRequest = updateRequest;
                     }
                 }

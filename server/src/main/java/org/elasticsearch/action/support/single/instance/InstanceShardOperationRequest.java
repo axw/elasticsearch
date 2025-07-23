@@ -64,6 +64,12 @@ public abstract class InstanceShardOperationRequest<Request extends InstanceShar
         this.index = index;
     }
 
+    public InstanceShardOperationRequest(@Nullable ShardId shardId, String index){
+        assert shardId == null || shardId.getIndexName().equals(index);
+        this.shardId = shardId;
+        this.index = index;
+    }
+
     @Override
     public ActionRequestValidationException validate() {
         ActionRequestValidationException validationException = null;

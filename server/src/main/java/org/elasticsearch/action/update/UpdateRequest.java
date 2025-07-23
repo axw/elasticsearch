@@ -122,6 +122,7 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest>
     private boolean docAsUpsert = false;
     private boolean detectNoop = true;
     private boolean requireAlias = false;
+    private boolean local = false;
 
     @Nullable
     private IndexRequest doc;
@@ -159,10 +160,18 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest>
         detectNoop = in.readBoolean();
         scriptedUpsert = in.readBoolean();
         requireAlias = in.readBoolean();
+        if (in.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_LOCAL)) {
+            local = in.readBoolean();
+        }
     }
 
     public UpdateRequest(String index, String id) {
         super(index);
+        this.id = id;
+    }
+
+    public UpdateRequest(@Nullable ShardId shardId, String index, String id) {
+        super(shardId, index);
         this.id = id;
     }
 
@@ -245,6 +254,17 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest>
     @Override
     public String routing() {
         return this.routing;
+    }
+
+    @Override
+    public UpdateRequest local(boolean local) {
+        this.local = local;
+        return this;
+    }
+
+    @Override
+    public boolean local() {
+        return this.local;
     }
 
     public ShardId getShardId() {
@@ -685,6 +705,9 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest>
 
     @Override
     public int route(IndexRouting indexRouting) {
+        if (this.shardId != null) {
+            return this.shardId.id();
+        }
         return indexRouting.updateShard(id, routing);
     }
 

@@ -86,6 +86,7 @@ public class BulkRequest extends LegacyActionRequest
     private Boolean globalRequireAlias;
     private Boolean globalRequireDatsStream;
     private boolean includeSourceOnError = true;
+    private Boolean local;
 
     private long sizeInBytes = 0;
 
@@ -108,6 +109,9 @@ public class BulkRequest extends LegacyActionRequest
         if (in.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_INCLUDE_SOURCE_ON_ERROR)) {
             includeSourceOnError = in.readBoolean();
         } // else default value is true
+        if (in.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_LOCAL)) {
+            local = in.readBoolean();
+        } // else default value is false
     }
 
     public BulkRequest(@Nullable String globalIndex) {
@@ -254,7 +258,7 @@ public class BulkRequest extends LegacyActionRequest
      * Adds a framed data in binary format
      */
     public BulkRequest add(BytesReference data, @Nullable String defaultIndex, XContentType xContentType) throws IOException {
-        return add(data, defaultIndex, null, null, null, null, null, null, true, xContentType, RestApiVersion.current());
+        return add(data, defaultIndex, null, null, null, null, null, null, local, true, xContentType, RestApiVersion.current());
     }
 
     /**
@@ -262,8 +266,20 @@ public class BulkRequest extends LegacyActionRequest
      */
     public BulkRequest add(BytesReference data, @Nullable String defaultIndex, boolean allowExplicitIndex, XContentType xContentType)
         throws IOException {
-        return add(data, defaultIndex, null, null, null, null, null, null, allowExplicitIndex, xContentType, RestApiVersion.current());
-
+        return add(
+            data,
+            defaultIndex,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            local,
+            allowExplicitIndex,
+            xContentType,
+            RestApiVersion.current()
+        );
     }
 
     public BulkRequest add(
@@ -275,6 +291,7 @@ public class BulkRequest extends LegacyActionRequest
         @Nullable Boolean defaultRequireAlias,
         @Nullable Boolean defaultRequireDataStream,
         @Nullable Boolean defaultListExecutedPipelines,
+        @Nullable Boolean defaultLocal,
         boolean allowExplicitIndex,
         XContentType xContentType,
         RestApiVersion restApiVersion
@@ -292,6 +309,7 @@ public class BulkRequest extends LegacyActionRequest
             requireAlias,
             requireDataStream,
             defaultListExecutedPipelines,
+            defaultLocal,
             allowExplicitIndex,
             xContentType,
             (indexRequest, type) -> internalAdd(indexRequest),
@@ -413,6 +431,14 @@ public class BulkRequest extends LegacyActionRequest
         return includeSourceOnError;
     }
 
+    public boolean local() {
+        return local;
+    }
+
+    public void local(boolean local) {
+        this.local = local;
+    }
+
     /**
      * Note for internal callers (NOT high level rest client),
      * the global parameter setting is ignored when used with:
@@ -474,6 +500,9 @@ public class BulkRequest extends LegacyActionRequest
         if (out.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_INCLUDE_SOURCE_ON_ERROR)) {
             out.writeBoolean(includeSourceOnError);
         }
+        if (out.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_LOCAL)) {
+            out.writeBoolean(local);
+        }
     }
 
     @Override
@@ -483,6 +512,7 @@ public class BulkRequest extends LegacyActionRequest
 
     private void applyGlobalMandatoryParameters(DocWriteRequest<?> request) {
         request.index(valueOrDefault(request.index(), globalIndex));
+        request.local(local);
     }
 
     private static String valueOrDefault(String value, String globalDefault) {
@@ -554,6 +584,8 @@ public class BulkRequest extends LegacyActionRequest
         bulkRequest.routing(routing());
         bulkRequest.requireAlias(requireAlias());
         bulkRequest.requireDataStream(requireDataStream());
+        bulkRequest.includeSourceOnError(includeSourceOnError());
+        bulkRequest.local(local());
         return bulkRequest;
     }
 }

@@ -298,6 +298,13 @@ public class RestUtils {
     public static final String INCLUDE_SOURCE_ON_ERROR_PARAMETER = "include_source_on_error";
 
     /**
+     * The name of the common {@code ?local} query parameter.
+     * By default, the request will be routed to the primary shard's node. This parameter enables enforcing execution of the request on
+     * the local node if has the primary shard, failing otherwise.
+     */
+    public static final String REST_LOCAL_PARAM = "local";
+
+    /**
      * Extract the {@code ?master_timeout} parameter from the request, imposing the common default of {@code 30s} in case the parameter is
      * missing.
      *
@@ -344,6 +351,17 @@ public class RestUtils {
     public static boolean getIncludeSourceOnError(RestRequest restRequest) {
         assert restRequest != null;
         return restRequest.paramAsBoolean(INCLUDE_SOURCE_ON_ERROR_PARAMETER, true);
+    }
+
+    /**
+     * Extract the {@code ?local} parameter from the request, returning {@code false} in case the parameter is missing.
+     *
+     * @param restRequest The request from which to extract the {@code ?local} parameter
+     * @return the value of the {@code ?local} parameter from the request, with a default of {@code false}
+     */
+    public static boolean getLocal(RestRequest restRequest) {
+        assert restRequest != null;
+        return restRequest.paramAsBoolean(REST_LOCAL_PARAM, false);
     }
 
     // Remove the BWC support for the deprecated ?local parameter.

@@ -56,6 +56,7 @@ public class DeleteRequest extends ReplicatedWriteRequest<DeleteRequest>
     private VersionType versionType = VersionType.INTERNAL;
     private long ifSeqNo = UNASSIGNED_SEQ_NO;
     private long ifPrimaryTerm = UNASSIGNED_PRIMARY_TERM;
+    private boolean local = false;
 
     public DeleteRequest(StreamInput in) throws IOException {
         this(null, in);
@@ -73,6 +74,9 @@ public class DeleteRequest extends ReplicatedWriteRequest<DeleteRequest>
         versionType = VersionType.fromValue(in.readByte());
         ifSeqNo = in.readZLong();
         ifPrimaryTerm = in.readVLong();
+        if (in.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_LOCAL)) {
+            local = in.readBoolean();
+        }
     }
 
     public DeleteRequest() {
@@ -96,6 +100,13 @@ public class DeleteRequest extends ReplicatedWriteRequest<DeleteRequest>
      */
     public DeleteRequest(String index, String id) {
         super(NO_SHARD_ID);
+        this.index = index;
+        this.id = id;
+    }
+
+    public DeleteRequest(@Nullable ShardId shardId, String index, String id) {
+        super(shardId);
+        assert shardId == null || shardId.getIndexName().equals(index);
         this.index = index;
         this.id = id;
     }
@@ -149,6 +160,17 @@ public class DeleteRequest extends ReplicatedWriteRequest<DeleteRequest>
     @Override
     public String routing() {
         return this.routing;
+    }
+
+    @Override
+    public DeleteRequest local(boolean local) {
+        this.local = local;
+        return this;
+    }
+
+    @Override
+    public boolean local() {
+        return local;
     }
 
     @Override
@@ -239,6 +261,9 @@ public class DeleteRequest extends ReplicatedWriteRequest<DeleteRequest>
 
     @Override
     public int route(IndexRouting indexRouting) {
+        if (this.shardId != null) {
+            return this.shardId.id();
+        }
         return indexRouting.deleteShard(id, routing);
     }
 

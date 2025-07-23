@@ -95,6 +95,7 @@ public class RestBulkAction extends BaseRestHandler {
             FetchSourceContext defaultFetchSourceContext = FetchSourceContext.parseFromRestRequest(request);
             String defaultPipeline = request.param("pipeline");
             boolean defaultListExecutedPipelines = request.paramAsBoolean("list_executed_pipelines", false);
+            boolean defaultLocal = request.paramAsBoolean("local", false);
             String waitForActiveShards = request.param("wait_for_active_shards");
             if (waitForActiveShards != null) {
                 bulkRequest.waitForActiveShards(ActiveShardCount.parseString(waitForActiveShards));
@@ -104,6 +105,7 @@ public class RestBulkAction extends BaseRestHandler {
             bulkRequest.timeout(request.paramAsTime("timeout", BulkShardRequest.DEFAULT_TIMEOUT));
             bulkRequest.setRefreshPolicy(request.param("refresh"));
             bulkRequest.includeSourceOnError(RestUtils.getIncludeSourceOnError(request));
+            bulkRequest.local(RestUtils.getLocal(request));
             ReleasableBytesReference content = request.requiredContent();
 
             try {
@@ -116,6 +118,7 @@ public class RestBulkAction extends BaseRestHandler {
                     defaultRequireAlias,
                     defaultRequireDataStream,
                     defaultListExecutedPipelines,
+                    defaultLocal,
                     allowExplicitIndex,
                     request.getXContentType(),
                     request.getRestApiVersion()
@@ -169,6 +172,7 @@ public class RestBulkAction extends BaseRestHandler {
                     request.paramAsBoolean(DocWriteRequest.REQUIRE_ALIAS, false),
                     request.paramAsBoolean(DocWriteRequest.REQUIRE_DATA_STREAM, false),
                     request.paramAsBoolean("list_executed_pipelines", false),
+                    request.paramAsBoolean("local", false),
                     allowExplicitIndex,
                     request.getXContentType(),
                     (indexRequest, type) -> items.add(indexRequest),

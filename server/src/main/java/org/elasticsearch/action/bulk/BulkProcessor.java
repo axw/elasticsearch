@@ -449,6 +449,7 @@ public class BulkProcessor implements Closeable {
                 null,
                 null,
                 null,
+                null,
                 true,
                 xContentType,
                 RestApiVersion.current()

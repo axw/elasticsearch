@@ -73,6 +73,7 @@ public class RestSimulateIngestAction extends BaseRestHandler {
         String defaultIndex = request.param("index");
         FetchSourceContext defaultFetchSourceContext = FetchSourceContext.parseFromRestRequest(request);
         String defaultPipeline = request.param("pipeline");
+        Boolean defaultLocal = request.paramAsBoolean("local", false);
         Tuple<XContentType, ReleasableBytesReference> sourceTuple = request.contentOrSourceParam();
         Map<String, Object> sourceMap = XContentHelper.convertToMap(sourceTuple.v2(), false, sourceTuple.v1()).v2();
         Map<String, Map<String, Object>> pipelineSubstitutions = (Map<String, Map<String, Object>>) sourceMap.remove(
@@ -101,6 +102,7 @@ public class RestSimulateIngestAction extends BaseRestHandler {
             null,
             null,
             true,
+            defaultLocal,
             true,
             request.getXContentType(),
             request.getRestApiVersion()
