@@ -532,12 +532,21 @@ public abstract class TransportWriteAction<
                 };
                 // If the post refresh action is null, this is just the replica and we only call the static method
                 if (postWriteRefresh != null) {
+                    boolean waitForFlush = true;
+                    /* TODO fix and generalise
+                    if (request instanceof org.elasticsearch.action.index.IndexRequest indexRequest) {
+                        waitForFlush = indexRequest.waitForFlush();
+                    } else if (request instanceof org.elasticsearch.action.bulk.BulkRequest bulkRequest) {
+                        waitForFlush = bulkRequest.waitForFlush();
+                    }
+                     */
                     postWriteRefresh.refreshShard(
                         request.getRefreshPolicy(),
                         indexShard,
                         location,
                         refreshListener,
-                        postWriteRefreshTimeout
+                        postWriteRefreshTimeout,
+                        waitForFlush
                     );
                 } else {
                     PostWriteRefresh.refreshReplicaShard(request.getRefreshPolicy(), indexShard, location, refreshListener);

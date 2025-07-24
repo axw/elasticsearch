@@ -121,12 +121,14 @@ public class RestIndexAction extends BaseRestHandler {
         indexRequest.setIncludeSourceOnError(RestUtils.getIncludeSourceOnError(request));
         String sOpType = request.param("op_type");
         String waitForActiveShards = request.param("wait_for_active_shards");
+        boolean waitForFlush = request.paramAsBoolean("wait_for_flush", false);
         if (waitForActiveShards != null) {
             indexRequest.waitForActiveShards(ActiveShardCount.parseString(waitForActiveShards));
         }
         if (sOpType != null) {
             indexRequest.opType(sOpType);
         }
+        indexRequest.setWaitForFlush(waitForFlush);
 
         return channel -> {
             source.mustIncRef();

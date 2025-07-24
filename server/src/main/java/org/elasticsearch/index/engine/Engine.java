@@ -2425,6 +2425,10 @@ public abstract class Engine implements Closeable {
         throw new UnsupportedOperationException();
     }
 
+    public void addCommitListener(long generation, ActionListener<Void> listener) {
+        listener.onFailure(new UnsupportedOperationException("Engine type " + this.getClass() + " does not support commit durability waiting."));
+    }
+
     public void addFlushListener(Translog.Location location, ActionListener<Long> listener) {
         listener.onFailure(new UnsupportedOperationException("Engine type " + this.getClass() + " does not support flush listeners."));
     }

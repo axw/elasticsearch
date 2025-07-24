@@ -153,6 +153,8 @@ public class IndexRequest extends ReplicatedWriteRequest<IndexRequest> implement
      */
     private Object rawTimestamp;
 
+    private boolean waitForFlush = false;
+
     public IndexRequest(StreamInput in) throws IOException {
         this(null, in);
     }
@@ -216,6 +218,9 @@ public class IndexRequest extends ReplicatedWriteRequest<IndexRequest> implement
         if (in.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_INCLUDE_SOURCE_ON_ERROR)) {
             includeSourceOnError = in.readBoolean();
         } // else default value is true
+        if (in.getTransportVersion().onOrAfter(TransportVersions.V_8_17_0)) {
+            this.waitForFlush = in.readBoolean();
+        }
     }
 
     public IndexRequest() {
@@ -826,6 +831,9 @@ public class IndexRequest extends ReplicatedWriteRequest<IndexRequest> implement
         if (out.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_INCLUDE_SOURCE_ON_ERROR)) {
             out.writeBoolean(includeSourceOnError);
         }
+        if (out.getTransportVersion().onOrAfter(TransportVersions.V_8_17_0)) {
+            out.writeBoolean(waitForFlush);
+        }
     }
 
     @Override
@@ -1021,5 +1029,14 @@ public class IndexRequest extends ReplicatedWriteRequest<IndexRequest> implement
         } else {
             return Collections.unmodifiableList(executedPipelines);
         }
+    }
+
+    public boolean waitForFlush() {
+        return waitForFlush;
+    }
+
+    public IndexRequest setWaitForFlush(boolean waitForFlush) {
+        this.waitForFlush = waitForFlush;
+        return this;
     }
 }

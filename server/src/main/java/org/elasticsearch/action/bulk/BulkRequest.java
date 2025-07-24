@@ -87,6 +87,7 @@ public class BulkRequest extends LegacyActionRequest
     private Boolean globalRequireDatsStream;
     private boolean includeSourceOnError = true;
     private boolean local = false;
+    private boolean waitForFlush = false;
 
     private long sizeInBytes = 0;
 
@@ -109,6 +110,9 @@ public class BulkRequest extends LegacyActionRequest
         if (in.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_INCLUDE_SOURCE_ON_ERROR)) {
             includeSourceOnError = in.readBoolean();
         } // else default value is true
+        if (in.getTransportVersion().onOrAfter(TransportVersions.V_8_17_0)) {
+            this.waitForFlush = in.readBoolean();
+        }
     }
 
     public BulkRequest(@Nullable String globalIndex) {
@@ -458,6 +462,21 @@ public class BulkRequest extends LegacyActionRequest
         return this;
     }
 
+    /**
+     * If true, all IndexRequests in this BulkRequest will wait for flush durability.
+     */
+    public boolean waitForFlush() {
+        return waitForFlush;
+    }
+
+    /**
+     * Set whether all IndexRequests in this BulkRequest should wait for flush durability.
+     */
+    public BulkRequest setWaitForFlush(boolean waitForFlush) {
+        this.waitForFlush = waitForFlush;
+        return this;
+    }
+
     @Override
     public ActionRequestValidationException validate() {
         ActionRequestValidationException validationException = null;
@@ -496,6 +515,9 @@ public class BulkRequest extends LegacyActionRequest
         }
         if (out.getTransportVersion().onOrAfter(TransportVersions.INGEST_REQUEST_INCLUDE_SOURCE_ON_ERROR)) {
             out.writeBoolean(includeSourceOnError);
+        }
+        if (out.getTransportVersion().onOrAfter(TransportVersions.V_8_17_0)) {
+            out.writeBoolean(waitForFlush);
         }
     }
 
@@ -579,6 +601,7 @@ public class BulkRequest extends LegacyActionRequest
         bulkRequest.requireDataStream(requireDataStream());
         bulkRequest.includeSourceOnError(includeSourceOnError());
         bulkRequest.local(local());
+        bulkRequest.setWaitForFlush(waitForFlush());
         return bulkRequest;
     }
 }

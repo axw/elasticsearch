@@ -133,7 +133,6 @@ import java.util.stream.Stream;
 import static org.elasticsearch.core.Strings.format;
 
 public class InternalEngine extends Engine {
-
     /**
      * When we last pruned expired tombstones from versionMap.deletes:
      */
@@ -3545,6 +3544,11 @@ public class InternalEngine extends Engine {
         } else {
             listener.onResponse(null);
         }
+    }
+
+    @Override
+    public void addCommitListener(long generation, ActionListener<Void> listener) {
+        waitForCommitDurability(generation, listener);
     }
 
     /**

@@ -9,6 +9,8 @@
 
 package org.elasticsearch.action.support.replication;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionListenerResponseHandler;
@@ -29,6 +31,7 @@ import org.elasticsearch.transport.TransportService;
 import java.util.concurrent.Executor;
 
 public class PostWriteRefresh {
+    private static final Logger logger = LogManager.getLogger(PostWriteRefresh.class);
 
     public static final String POST_WRITE_REFRESH_ORIGIN = "post_write_refresh";
     public static final String FORCED_REFRESH_AFTER_INDEX = "refresh_flag_index";
@@ -40,19 +43,34 @@ public class PostWriteRefresh {
         this.refreshExecutor = transportService.getThreadPool().executor(ThreadPool.Names.REFRESH);
     }
 
+    /**
+     * @param waitForFlush if true, block until both refresh and a natural commit (durable flush) covering the write have occurred
+     */
     public void refreshShard(
         WriteRequest.RefreshPolicy policy,
         IndexShard indexShard,
         @Nullable Translog.Location location,
         ActionListener<Boolean> listener,
-        @Nullable TimeValue postWriteRefreshTimeout
+        @Nullable TimeValue postWriteRefreshTimeout,
+        boolean waitForFlush
     ) {
         switch (policy) {
             case NONE -> listener.onResponse(false);
             case WAIT_UNTIL -> waitUntil(indexShard, location, new ActionListener<>() {
                 @Override
                 public void onResponse(Boolean forced) {
-                    if (location != null && indexShard.routingEntry().isSearchable() == false) {
+                    logger.info("refreshed: waitForFlush=[{}], location=[{}]", waitForFlush, location);
+                    if (waitForFlush && location != null) {
+                        Engine engineOrNull = indexShard.getEngineOrNull();
+                        if (engineOrNull == null) {
+                            listener.onFailure(new AlreadyClosedException("Engine closed during durable commit wait."));
+                            return;
+                        }
+                        engineOrNull.addCommitListener(location.generation(), listener.delegateFailureAndWrap((l, ignore) -> {
+                            logger.info("committed: forced=[{}]", forced);
+                            l.onResponse(forced);
+                        }));
+                    } else if (location != null && indexShard.routingEntry().isSearchable() == false) {
                         refreshUnpromotables(indexShard, location, listener, forced, postWriteRefreshTimeout);
                     } else {
                         listener.onResponse(forced);
@@ -147,5 +165,4 @@ public class PostWriteRefresh {
             new ActionListenerResponseHandler<>(listener.safeMap(r -> wasForced), in -> ActionResponse.Empty.INSTANCE, refreshExecutor)
         );
     }
-
 }

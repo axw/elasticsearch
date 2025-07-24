@@ -22,6 +22,7 @@ import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.bytes.CompositeBytesReference;
 import org.elasticsearch.common.bytes.ReleasableBytesReference;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.core.Nullable;
 import org.elasticsearch.core.Releasable;
 import org.elasticsearch.core.Releasables;
 import org.elasticsearch.core.TimeValue;
@@ -106,6 +107,9 @@ public class RestBulkAction extends BaseRestHandler {
             bulkRequest.setRefreshPolicy(request.param("refresh"));
             bulkRequest.includeSourceOnError(RestUtils.getIncludeSourceOnError(request));
             bulkRequest.local(RestUtils.getLocal(request));
+            //boolean waitForFlush = request.paramAsBoolean("wait_for_flush", false);
+            //bulkRequest.setWaitForFlush(waitForFlush);
+            bulkRequest.setWaitForFlush(true);
             ReleasableBytesReference content = request.requiredContent();
 
             try {
