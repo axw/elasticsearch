@@ -27,6 +27,8 @@ import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.xpack.core.XPackSettings;
 import org.elasticsearch.xpack.oteldata.otlp.OTLPMetricsRestAction;
 import org.elasticsearch.xpack.oteldata.otlp.OTLPMetricsTransportAction;
+import org.elasticsearch.xpack.oteldata.otlp.OTLPTracesRestAction;
+import org.elasticsearch.xpack.oteldata.otlp.OTLPTracesTransportAction;
 
 import java.util.Collection;
 import java.util.List;
@@ -79,7 +81,7 @@ public class OTelPlugin extends Plugin implements ActionPlugin {
         Supplier<DiscoveryNodes> nodesInCluster,
         Predicate<NodeFeature> clusterSupportsFeature
     ) {
-        return List.of(new OTLPMetricsRestAction());
+        return List.of(new OTLPMetricsRestAction(), new OTLPTracesRestAction());
     }
 
     @Override
@@ -110,6 +112,9 @@ public class OTelPlugin extends Plugin implements ActionPlugin {
 
     @Override
     public Collection<ActionHandler> getActions() {
-        return List.of(new ActionHandler(OTLPMetricsTransportAction.TYPE, OTLPMetricsTransportAction.class));
+        return List.of(
+            new ActionHandler(OTLPMetricsTransportAction.TYPE, OTLPMetricsTransportAction.class),
+            new ActionHandler(OTLPTracesTransportAction.TYPE, OTLPTracesTransportAction.class)
+        );
     }
 }

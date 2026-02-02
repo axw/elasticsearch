@@ -21,6 +21,7 @@ import java.util.List;
 public final class TargetIndex {
 
     public static final String TYPE_METRICS = "metrics";
+    public static final String TYPE_TRACES = "traces";
 
     private static final String ELASTICSEARCH_INDEX = "elasticsearch.index";
     private static final String DATA_STREAM_DATASET = "data_stream.dataset";

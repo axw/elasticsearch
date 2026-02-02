@@ -4,6 +4,28 @@ setup:
       cluster.health:
         wait_for_events: languid
 ---
+"OTLP traces endpoint document shape (bulk index same schema as POST /_otlp/v1/traces)":
+  - do:
+      bulk:
+        index: traces-generic.otel-default
+        refresh: true
+        body:
+          - create: {}
+          - '{"@timestamp":"2024-02-18T14:48:33.467654000Z","data_stream":{"dataset":"generic.otel","type":"traces","namespace":"default"},"resource":{"attributes":{"service.name":"OtelSample","telemetry.sdk.language":"dotnet","telemetry.sdk.name":"opentelemetry"}},"name":"foo","trace_id":"7bba9f33312b3dbb8b2c2c62bb7abe2d","span_id":"086e83747d0e381e","kind":"SERVER","status":{"code":"2xx"}}'
+  - is_false: errors
+  - do:
+      search:
+        index: traces-generic.otel-default
+        body:
+          query:
+            term:
+              trace_id: "7bba9f33312b3dbb8b2c2c62bb7abe2d"
+  - length: { hits.hits: 1 }
+  - match: { hits.hits.0._source.name: "foo" }
+  - match: { hits.hits.0._source.kind: "SERVER" }
+  - match: { hits.hits.0._source.status.code: "2xx" }
+
+---
 "Test pushing simple trace":
   - do:
       bulk:
